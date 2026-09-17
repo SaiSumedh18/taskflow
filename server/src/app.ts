@@ -8,11 +8,19 @@ import taskRoutes from "./routes/task.routes.js";
 
 export const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.CLIENT_URL,
+].filter(
+  (origin): origin is string =>
+    Boolean(origin)
+);
+
 app.use(helmet());
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -22,10 +30,22 @@ app.use(express.json());
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
     success: true,
-    message: "TaskFlow API is running",
+    message:
+      "TaskFlow API is running",
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/projects", projectRoutes);
-app.use("/api", taskRoutes);
+app.use(
+  "/api/auth",
+  authRoutes
+);
+
+app.use(
+  "/api/projects",
+  projectRoutes
+);
+
+app.use(
+  "/api",
+  taskRoutes
+);
