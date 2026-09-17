@@ -217,7 +217,7 @@ Make sure the following are installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone <https://github.com/SaiSumedh18/taskflow>
 cd taskflow
 ```
 
