@@ -4,6 +4,20 @@ TaskFlow is a full-stack team task management platform built with TypeScript, Re
 
 It allows users to create projects, collaborate with team members, assign tasks, manage priorities and deadlines, and track work through a Kanban-style workflow.
 
+## Screenshots
+
+### Login
+
+![TaskFlow Login](docs/screenshots/taskflow-login.png)
+
+### Dashboard
+
+![TaskFlow Dashboard](docs/screenshots/taskflow-dashboard.png)
+
+### Project Kanban Board
+
+![TaskFlow Kanban Board](docs/screenshots/taskflow-kanban.png)
+
 ## Features
 
 ### Authentication
