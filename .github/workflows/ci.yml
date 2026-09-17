@@ -1,0 +1,97 @@
+name: TaskFlow CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Backend Build and Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+
+        env:
+          POSTGRES_USER: taskflow
+          POSTGRES_PASSWORD: taskflow_password
+          POSTGRES_DB: taskflow_test
+
+        ports:
+          - 5433:5432
+
+        options: >-
+          --health-cmd="pg_isready -U taskflow -d taskflow_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Load test database schema
+        env:
+          PGPASSWORD: taskflow_password
+        run: |
+          psql \
+            -h localhost \
+            -p 5433 \
+            -U taskflow \
+            -d taskflow_test \
+            -f server/sql/schema.sql
+
+      - name: Build backend
+        working-directory: server
+        run: npm run build
+
+      - name: Run backend API tests
+        working-directory: server
+        run: npm test
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client
+        env:
+          VITE_API_URL: http://localhost:4000/api
+        run: npm run build
