@@ -1,12 +1,22 @@
 # TaskFlow
 
-TaskFlow is a full-stack team task management platform built with TypeScript, React, Node.js, Express.js, and PostgreSQL.
+TaskFlow is a full-stack team task management platform built with React, TypeScript, Node.js, Express.js, and PostgreSQL.
 
-It allows users to create projects, collaborate with team members, assign tasks, manage priorities and deadlines, and track work through a Kanban-style workflow.
+Users can create projects, collaborate with team members, assign tasks, set priorities and deadlines, and track work through a Kanban-style workflow.
+
+## Live Demo
+
+**Application:** https://taskflow-1cd4.onrender.com
+
+**Backend API:** https://taskflow-api-8lex.onrender.com
+
+**API Health Check:** https://taskflow-api-8lex.onrender.com/api/health
+
+**GitHub Repository:** https://github.com/SaiSumedh18/taskflow
 
 ## Screenshots
 
-### Login
+### Login / Registration
 
 ![TaskFlow Login](docs/screenshots/taskflow-login.png)
 
@@ -25,67 +35,88 @@ It allows users to create projects, collaborate with team members, assign tasks,
 - User registration and login
 - bcrypt password hashing
 - JWT-based authentication
-- Protected API routes
+- Protected backend routes
 - Persistent browser sessions
+- Per-user authorization
 
 ### Project Management
 
 - Create projects
-- View owned and shared projects
+- View owned projects
+- View projects shared with the current user
 - Project ownership
-- Team membership
 - OWNER and MEMBER roles
-- Add and remove project members
+- Team membership management
+
+### Team Collaboration
+
+Project owners can:
+
+- Add registered users to a project by email
+- Remove project members
+- View member roles
+- Assign tasks to project members
+
+Members can access shared projects while owner-only operations remain protected.
+
+When a project member is removed, tasks assigned to that user automatically become unassigned.
 
 ### Task Management
+
+Users can:
 
 - Create tasks
 - Edit tasks
 - Delete tasks
 - Assign tasks to project members
-- Set task due dates
-- Set LOW, MEDIUM, or HIGH priority
-- Assign and unassign tasks
+- Leave tasks unassigned
+- Set due dates
+- Set priorities
+- Update task status
 
-### Task Workflow
+Supported priorities:
+
+- LOW
+- MEDIUM
+- HIGH
+
+### Kanban Workflow
 
 Tasks move through three workflow stages:
 
-- TODO
-- IN PROGRESS
-- DONE
+```text
+TODO
+  ↓
+IN PROGRESS
+  ↓
+DONE
+```
 
-Tasks are displayed using a Kanban-style project board.
+Tasks are displayed in a responsive Kanban-style project board.
 
 ### Search and Filtering
 
 Tasks can be searched and filtered by:
 
-- Task title or description
+- Title
+- Description
 - Status
 - Priority
 - Assignee
 - Unassigned tasks
 
-### Team Management
-
-Project owners can:
-
-- Add members by email
-- Remove members
-- View project members
-- View OWNER and MEMBER roles
-
-When a project member is removed, tasks assigned to that member are automatically changed to unassigned.
+Multiple filters can be combined.
 
 ### Automated Testing
 
-The backend includes automated API tests covering:
+The backend includes automated API tests using Vitest and Supertest.
 
-- Health endpoint
+The test suite covers:
+
+- API health checks
 - User registration
 - Password hashing
-- Duplicate-email prevention
+- Duplicate email prevention
 - Login
 - JWT-protected routes
 - Project creation
@@ -94,6 +125,22 @@ The backend includes automated API tests covering:
 - Task updates
 - Task filtering
 - Task deletion
+
+A separate PostgreSQL test database is used so automated tests do not modify development data.
+
+### Continuous Integration
+
+GitHub Actions automatically runs on pushes and pull requests to `main`.
+
+The CI pipeline:
+
+- Installs backend dependencies
+- Starts a PostgreSQL service
+- Loads the database schema
+- Builds the backend
+- Runs automated API tests
+- Installs frontend dependencies
+- Builds the React application
 
 ## Tech Stack
 
@@ -104,6 +151,7 @@ The backend includes automated API tests covering:
 - Vite
 - React Router
 - Axios
+- CSS
 
 ### Backend
 
@@ -124,25 +172,35 @@ The backend includes automated API tests covering:
 - Vitest
 - Supertest
 
-### Development and Infrastructure
+### DevOps and Infrastructure
 
 - Docker
 - Docker Compose
 - Git
 - GitHub
+- GitHub Actions
+- Render
 
 ## Architecture
 
+### Application Architecture
+
 ```text
+Browser
+   |
+   v
 React + TypeScript
-        |
-        | REST API
-        v
+Render Static Site
+   |
+   | HTTPS / REST API
+   v
 Node.js + Express
-        |
-        | SQL
-        v
+Render Web Service
+   |
+   | SQL
+   v
 PostgreSQL
+Render Managed Database
 ```
 
 ### Authentication Flow
@@ -156,29 +214,35 @@ Register / Login
  v
 Express API
  |
- v
-bcrypt + JWT
+ +---- bcrypt password verification
+ |
+ +---- JWT generation
  |
  v
-Protected Routes
+Authenticated request
+ |
+ v
+Protected API routes
 ```
 
-### Data Relationships
+### Project and Task Relationships
 
 ```text
 User
  |
- +---- owns ----> Project
- |
- +---- joins ---> Project Membership
-                    |
-                    v
-                  Project
-                    |
-                    v
-                   Task
-                    |
-                    +---- assigned to ---> User
+ +---- owns ----------> Project
+ |                       |
+ +---- membership -----> |
+                         |
+                         v
+                   Project Members
+                         |
+                         v
+                       Tasks
+                         |
+                         +---- created by ---> User
+                         |
+                         +---- assigned to --> User
 ```
 
 ## Project Structure
@@ -186,14 +250,22 @@ User
 ```text
 taskflow/
 |
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+|
 ├── client/
+│   ├── public/
 │   ├── src/
 │   │   ├── api/
 │   │   ├── components/
 │   │   ├── context/
 │   │   ├── pages/
 │   │   └── types/
+│   ├── .dockerignore
 │   ├── .env.example
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   └── package.json
 |
 ├── server/
@@ -202,17 +274,24 @@ taskflow/
 │   │   ├── controllers/
 │   │   ├── middleware/
 │   │   ├── routes/
-│   │   ├── services/
-│   │   ├── types/
 │   │   └── utils/
 │   ├── sql/
 │   │   └── schema.sql
 │   ├── tests/
+│   │   ├── api.test.ts
+│   │   └── setup.ts
+│   ├── .dockerignore
 │   ├── .env.example
-│   └── package.json
+│   ├── Dockerfile
+│   ├── package.json
+│   └── vitest.config.ts
 |
-├── docker-compose.yml
+├── docs/
+│   └── screenshots/
+|
+├── .env.example
 ├── .gitignore
+├── docker-compose.yml
 └── README.md
 ```
 
@@ -220,7 +299,7 @@ taskflow/
 
 ### Requirements
 
-Make sure the following are installed:
+Install:
 
 - Node.js
 - npm
@@ -228,49 +307,100 @@ Make sure the following are installed:
 - Docker Compose
 - Git
 
-### 1. Clone the Repository
+### Clone the Repository
 
 ```bash
-git clone <https://github.com/SaiSumedh18/taskflow>
+git clone https://github.com/SaiSumedh18/taskflow.git
 cd taskflow
 ```
 
-> `<repository-url>` will be replaced with the actual GitHub repository URL after the repository is published.
+## Option 1: Run the Full Application with Docker
 
-### 2. Start PostgreSQL
+TaskFlow can run as three Docker services:
+
+- PostgreSQL
+- Express backend
+- React frontend served through Nginx
+
+Create the Docker environment file:
 
 ```bash
-docker compose up -d
+cp .env.example .env
 ```
 
-Verify the database container is running:
+Generate a secure JWT secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Place the generated value in `.env`.
+
+Start the entire application:
+
+```bash
+docker compose up --build -d
+```
+
+Check the services:
 
 ```bash
 docker compose ps
 ```
 
-### 3. Configure the Backend
+The application will be available at:
 
-Copy the example environment file:
+```text
+Frontend:
+http://localhost:5173
+
+Backend:
+http://localhost:4000
+
+API Health:
+http://localhost:4000/api/health
+
+PostgreSQL:
+localhost:5433
+```
+
+Stop the application:
+
+```bash
+docker compose down
+```
+
+## Option 2: Run Frontend and Backend Manually
+
+### Start PostgreSQL
+
+From the project root:
+
+```bash
+docker compose up -d postgres
+```
+
+### Configure the Backend
+
+Copy the environment template:
 
 ```bash
 cp server/.env.example server/.env
 ```
 
-The backend environment file should contain values similar to:
+Example configuration:
 
 ```env
 PORT=4000
 DATABASE_URL=postgresql://taskflow:your_password@localhost:5433/taskflow
-JWT_SECRET=replace-with-a-secure-secret
+JWT_SECRET=replace-with-a-secure-random-secret
 JWT_EXPIRES_IN=7d
+CLIENT_URL=http://localhost:5173
 ```
 
 Never commit the real `.env` file.
 
-### 4. Create the Database Tables
-
-Run:
+### Initialize the Database
 
 ```bash
 docker exec -i taskflow-postgres \
@@ -278,7 +408,7 @@ psql -U taskflow -d taskflow \
 < server/sql/schema.sql
 ```
 
-### 5. Install and Start the Backend
+### Start the Backend
 
 ```bash
 cd server
@@ -286,27 +416,15 @@ npm install
 npm run dev
 ```
 
-The backend API runs at:
+The API will run at:
 
 ```text
 http://localhost:4000
 ```
 
-Health endpoint:
+### Configure the Frontend
 
-```text
-http://localhost:4000/api/health
-```
-
-### 6. Configure the Frontend
-
-Open another terminal and return to the project folder:
-
-```bash
-cd ~/Downloads/taskflow
-```
-
-Copy the frontend environment file:
+From the project root:
 
 ```bash
 cp client/.env.example client/.env
@@ -318,7 +436,7 @@ The frontend environment file should contain:
 VITE_API_URL=http://localhost:4000/api
 ```
 
-### 7. Install and Start the Frontend
+### Start the Frontend
 
 ```bash
 cd client
@@ -326,7 +444,7 @@ npm install
 npm run dev
 ```
 
-The frontend runs at:
+The frontend will run at:
 
 ```text
 http://localhost:5173
@@ -334,9 +452,9 @@ http://localhost:5173
 
 ## Running Automated Tests
 
-TaskFlow uses a separate PostgreSQL test database so automated tests do not modify development data.
+TaskFlow uses a separate PostgreSQL database for automated tests.
 
-### Create the Test Database
+Create the test database:
 
 ```bash
 docker exec taskflow-postgres \
@@ -344,9 +462,7 @@ psql -U taskflow -d postgres \
 -c "CREATE DATABASE taskflow_test;"
 ```
 
-### Load the Database Schema
-
-From the TaskFlow root directory:
+Load the schema:
 
 ```bash
 docker exec -i taskflow-postgres \
@@ -354,14 +470,28 @@ psql -U taskflow -d taskflow_test \
 < server/sql/schema.sql
 ```
 
-### Run the Tests
+Run the tests:
 
 ```bash
 cd server
 npm test
 ```
 
-The current automated test suite verifies authentication, authorization, projects, tasks, filtering, and database behavior.
+## Build Commands
+
+### Backend
+
+```bash
+cd server
+npm run build
+```
+
+### Frontend
+
+```bash
+cd client
+npm run build
+```
 
 ## API Overview
 
@@ -400,57 +530,88 @@ PATCH  /api/tasks/:id
 DELETE /api/tasks/:id
 ```
 
-### Task Filtering
+### Task Filtering API
 
-The project task endpoint supports filtering by status and priority.
+The backend supports filtering project tasks by status and priority.
 
 Examples:
 
 ```text
 GET /api/projects/1/tasks?status=TODO
+
 GET /api/projects/1/tasks?priority=HIGH
+
 GET /api/projects/1/tasks?status=IN_PROGRESS&priority=MEDIUM
 ```
 
 ## Security
 
-TaskFlow currently implements:
+TaskFlow implements:
 
 - bcrypt password hashing
 - JWT authentication
 - Protected API routes
 - Project membership authorization
-- Project owner authorization for member management
+- Project owner authorization
 - Parameterized PostgreSQL queries
-- Environment variables for sensitive configuration
+- Environment-based configuration
+- Production CORS restrictions
+- Separate frontend and backend deployment configuration
 
-Real `.env` files are excluded from Git and should never be committed.
+Sensitive `.env` files are excluded from Git.
 
-## Build Commands
+## Deployment
 
-### Backend
-
-```bash
-cd server
-npm run build
-```
+TaskFlow is deployed using Render.
 
 ### Frontend
 
-```bash
-cd client
-npm run build
+React and Vite are deployed as a Render Static Site:
+
+```text
+https://taskflow-1cd4.onrender.com
 ```
+
+The frontend uses React Router and a Render rewrite rule so routes such as `/dashboard` and `/projects/:id` can be loaded directly.
+
+### Backend
+
+The Express API runs as a Render Web Service:
+
+```text
+https://taskflow-api-8lex.onrender.com
+```
+
+The production frontend URL is supplied to the backend through the `CLIENT_URL` environment variable for CORS configuration.
+
+### Database
+
+Production data is stored in a managed PostgreSQL database on Render.
+
+Database credentials and JWT secrets are stored using Render environment variables and are not committed to the repository.
+
+## Continuous Integration
+
+The workflow is located at:
+
+```text
+.github/workflows/ci.yml
+```
+
+GitHub Actions runs automatically when code is pushed to `main` or when a pull request targets `main`.
+
+Both the frontend build and backend test pipeline must succeed for the CI workflow to pass.
 
 ## Future Improvements
 
-Potential future improvements include:
+Potential future enhancements include:
 
 - Drag-and-drop Kanban cards
-- Email project invitations
+- Email-based project invitations
 - Activity history
-- Real-time notifications
+- Real-time updates
+- Notifications
 - Project analytics
+- Pagination
 - Dark mode
-- Expanded automated test coverage
-- Production deployment
+- Expanded integration testing
