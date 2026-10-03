@@ -639,7 +639,7 @@ Existing `/api/auth`, projects, memberships and task endpoints retain camelCase 
 - `docker compose -f docker-compose.yml up -d --build` uses Spring. Set VITE_API_URL=/api for the new frontend proxy and CLIENT_URL to the frontend origin. Review existing .env values; .env was preserved, not overwritten.
 - Roll back with `docker compose -f docker-compose.node.yml up -d --build`. Keep the same database and JWT secret where compatible. The Node files remain functional.
 - Isolated Docker verification: `docker compose -p taskflow-upgrade-verify -f compose.spring.verify.yml up -d --build --wait` (React 8092/API 4194/PostgreSQL 5497). Run `mvn -B spotless:check verify` with TEST_JDBC_URL=`jdbc:postgresql://localhost:5497/taskflow_test`, TEST_DB_USER=taskflow and TEST_DB_PASSWORD=local-test-only. Tests refuse any database other than `taskflow_test` and clear it.
-- Backend format check: Spotless/google-java-format. Frontend: npm ci, npm run lint, npm run build. CI retains the legacy Node checks and adds Java 21 Spring tests/package/format and Docker image build. Remote Actions has not been executed in this session.
+- Backend format check: Spotless/google-java-format. Frontend: npm ci, npm run lint, npm run build. CI retains the legacy Node checks and adds Java 21 Spring tests/package/format and Docker image build. [GitHub Actions passed](https://github.com/SaiSumedh18/taskflow/actions/runs/37158076864) for the implementation commit.
 
 ### Verified benchmark: 5,000 synthetic persisted tasks
 
