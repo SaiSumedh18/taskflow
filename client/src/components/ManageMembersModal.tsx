@@ -1,3 +1,4 @@
+import {isAxiosError} from "axios";
 import {
     useState,
     type FormEvent,
@@ -61,9 +62,9 @@ export function ManageMembersModal({
             setEmail("");
 
             await onMembersChanged();
-        } catch (error: any) {
+        } catch (error: unknown) {
             setError(
-                error?.response?.data?.message ??
+                (isAxiosError<{message:string}>(error) ? error.response?.data?.message : undefined) ??
                 "Unable to add member."
             );
         } finally {
@@ -92,9 +93,9 @@ export function ManageMembersModal({
             );
 
             await onMembersChanged();
-        } catch (error: any) {
+        } catch (error: unknown) {
             setError(
-                error?.response?.data?.message ??
+                (isAxiosError<{message:string}>(error) ? error.response?.data?.message : undefined) ??
                 "Unable to remove member."
             );
         } finally {

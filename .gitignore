@@ -61,3 +61,5 @@ yarn-error.log*
 
 *.tmp
 *.temp
+# Spring build output
+spring-server/target/

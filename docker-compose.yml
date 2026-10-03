@@ -25,15 +25,17 @@ services:
 
   backend:
     build:
-      context: ./server
+      context: ./spring-server
 
     container_name: taskflow-backend
 
     environment:
       PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JDBC_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
 
     ports:
       - "4000:4000"

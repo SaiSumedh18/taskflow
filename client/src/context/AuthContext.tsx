@@ -1,41 +1,11 @@
+import {AuthContext, type User} from "./auth-context";
 import {
-    createContext,
-    useContext,
     useEffect,
     useState,
     type ReactNode,
 } from "react";
 
 import { api } from "../api/client";
-
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
-
-interface AuthContextType {
-    user: User | null;
-    loading: boolean;
-
-    login: (
-        email: string,
-        password: string
-    ) => Promise<void>;
-
-    register: (
-        name: string,
-        email: string,
-        password: string
-    ) => Promise<void>;
-
-    logout: () => void;
-}
-
-const AuthContext =
-    createContext<AuthContextType | undefined>(
-        undefined
-    );
 
 export function AuthProvider({
     children,
@@ -138,17 +108,4 @@ export function AuthProvider({
             {children}
         </AuthContext.Provider>
     );
-}
-
-export function useAuth() {
-    const context =
-        useContext(AuthContext);
-
-    if (!context) {
-        throw new Error(
-            "useAuth must be used inside AuthProvider"
-        );
-    }
-
-    return context;
 }

@@ -1,0 +1,59 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS project_members (
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(30) NOT NULL DEFAULT 'MEMBER',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (project_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+
+    status VARCHAR(30) NOT NULL DEFAULT 'TODO',
+    priority VARCHAR(30) NOT NULL DEFAULT 'MEDIUM',
+
+    due_date TIMESTAMPTZ,
+
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+ON users(email);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id
+ON tasks(project_id);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to
+ON tasks(assigned_to);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_status
+ON tasks(status);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_priority
+ON tasks(priority);

@@ -1,6 +1,6 @@
 process.env.PORT = "4001";
 
-process.env.DATABASE_URL =
+process.env.DATABASE_URL ||=
     "postgresql://taskflow:taskflow_password@localhost:5433/taskflow_test";
 
 process.env.JWT_SECRET =
@@ -8,3 +8,4 @@ process.env.JWT_SECRET =
 
 process.env.JWT_EXPIRES_IN =
     "1h";
+if (!new URL(process.env.DATABASE_URL!).pathname.endsWith("_test")) throw new Error("Use an isolated test database");

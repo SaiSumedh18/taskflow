@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_DB: taskflow_test
+    ports: ["127.0.0.1:5497:5432"]
+    volumes: ["./server/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro"]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U taskflow -d taskflow_test]
+      interval: 2s
+      retries: 30
+  backend:
+    build: ./spring-server
+    environment:
+      PORT: 4000
+      JDBC_URL: jdbc:postgresql://postgres:5432/taskflow_test
+      DB_USER: taskflow
+      DB_PASSWORD: local-test-only
+      JWT_SECRET: isolated-compose-secret-at-least-32-bytes
+      CLIENT_URL: http://localhost:8092
+    ports: ["127.0.0.1:4194:4000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  frontend:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: /api
+    ports: ["127.0.0.1:8092:80"]
+    depends_on: [backend]

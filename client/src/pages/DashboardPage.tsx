@@ -7,7 +7,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 interface Project {
     id: number;
@@ -40,23 +40,13 @@ export function DashboardPage() {
         useState(false);
 
     useEffect(() => {
-        loadProjects();
+        let cancelled = false;
+        api.get("/projects")
+            .then(response => { if (!cancelled) setProjects(response.data.projects); })
+            .catch(() => { if (!cancelled) setError("Unable to load projects."); })
+            .finally(() => { if (!cancelled) setLoadingProjects(false); });
+        return () => { cancelled = true; };
     }, []);
-
-    async function loadProjects() {
-        try {
-            setLoadingProjects(true);
-            setError("");
-
-            const response = await api.get("/projects");
-
-            setProjects(response.data.projects);
-        } catch {
-            setError("Unable to load projects.");
-        } finally {
-            setLoadingProjects(false);
-        }
-    }
 
     async function handleCreateProject(
         event: FormEvent<HTMLFormElement>
