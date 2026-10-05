@@ -1,888 +1,358 @@
-import {
-    useEffect,
-    useState,
-} from "react";
-
-import {
-    Link,
-    useNavigate,
-    useParams,
-} from "react-router-dom";
-
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
-
+import { AppShell } from "../components/AppShell";
+import { Icon } from "../components/Icon";
 import { CreateTaskModal } from "../components/CreateTaskModal";
 import { EditTaskModal } from "../components/EditTaskModal";
 import { ManageMembersModal } from "../components/ManageMembersModal";
-
 interface Project {
-    id: number;
-    name: string;
-    description: string;
-    owner_id: number;
-    role: string;
+  id: number;
+  name: string;
+  description: string;
+  role: string;
 }
-
 interface Task {
-    id: number;
-    title: string;
-    description: string;
-
-    status:
-    | "TODO"
-    | "IN_PROGRESS"
-    | "DONE";
-
-    priority:
-    | "LOW"
-    | "MEDIUM"
-    | "HIGH";
-
-    due_date: string | null;
-    assigned_to: number | null;
-
-    creator_name: string;
-    assignee_name: string | null;
+  id: number;
+  title: string;
+  description: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  due_date: string | null;
+  assigned_to: number | null;
+  creator_name: string;
+  assignee_name: string | null;
 }
-
 interface Member {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
+  id: number;
+  name: string;
+  email: string;
+  role: string;
 }
-
-type StatusFilter =
-    | "ALL"
-    | "TODO"
-    | "IN_PROGRESS"
-    | "DONE";
-
-type PriorityFilter =
-    | "ALL"
-    | "LOW"
-    | "MEDIUM"
-    | "HIGH";
-
+const columns = [
+  ["TODO", "To do"],
+  ["IN_PROGRESS", "In progress"],
+  ["DONE", "Done"],
+] as const;
 export function ProjectPage() {
-    const { id } = useParams();
-
-    const navigate =
-        useNavigate();
-
-    const [project, setProject] =
-        useState<Project | null>(
-            null
-        );
-
-    const [tasks, setTasks] =
-        useState<Task[]>([]);
-
-    const [members, setMembers] =
-        useState<Member[]>([]);
-
-    const [loading, setLoading] =
-        useState(true);
-
-    const [error, setError] =
-        useState("");
-
-    const [
-        showCreateTask,
-        setShowCreateTask,
-    ] = useState(false);
-
-    const [
-        showMembers,
-        setShowMembers,
-    ] = useState(false);
-
-    const [
-        selectedTask,
-        setSelectedTask,
-    ] = useState<Task | null>(
-        null
-    );
-
-    const [
-        searchQuery,
-        setSearchQuery,
-    ] = useState("");
-
-    const [
-        statusFilter,
-        setStatusFilter,
-    ] = useState<StatusFilter>(
-        "ALL"
-    );
-
-    const [
-        priorityFilter,
-        setPriorityFilter,
-    ] = useState<PriorityFilter>(
-        "ALL"
-    );
-
-    const [
-        assigneeFilter,
-        setAssigneeFilter,
-    ] = useState("ALL");
-
-    useEffect(() => {
-        async function loadProject() {
-            try {
-                setLoading(true);
-                setError("");
-
-                const [
-                    projectResponse,
-                    tasksResponse,
-                    membersResponse,
-                ] = await Promise.all([
-                    api.get(
-                        `/projects/${id}`
-                    ),
-
-                    api.get(
-                        `/projects/${id}/tasks`
-                    ),
-
-                    api.get(
-                        `/projects/${id}/members`
-                    ),
-                ]);
-
-                setProject(
-                    projectResponse.data
-                        .project
-                );
-
-                setTasks(
-                    tasksResponse.data.tasks
-                );
-
-                setMembers(
-                    membersResponse.data
-                        .members
-                );
-            } catch {
-                setError(
-                    "Unable to load project."
-                );
-            } finally {
-                setLoading(false);
-            }
+  const { id } = useParams();
+  const [project, setProject] = useState<Project | null>(null),
+    [tasks, setTasks] = useState<Task[]>([]),
+    [members, setMembers] = useState<Member[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  const [createStatus, setCreateStatus] = useState<Task["status"]>("TODO");
+  const [showCreate, setShowCreate] = useState(false),
+    [showMembers, setShowMembers] = useState(false),
+    [selected, setSelected] = useState<Task | null>(null),
+    [search, setSearch] = useState(""),
+    [status, setStatus] = useState("ALL"),
+    [priority, setPriority] = useState("ALL"),
+    [assignee, setAssignee] = useState("ALL");
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [p, t, m] = await Promise.all([
+          api.get(`/projects/${id}`),
+          api.get(`/projects/${id}/tasks`),
+          api.get(`/projects/${id}/members`),
+        ]);
+        if (!cancelled) {
+          setProject(p.data.project);
+          setTasks(t.data.tasks);
+          setMembers(m.data.members);
+          setError("");
         }
-
-        loadProject();
-    }, [id]);
-
-    async function loadTasks() {
-        try {
-            const response =
-                await api.get(
-                    `/projects/${id}/tasks`
-                );
-
-            setTasks(
-                response.data.tasks
-            );
-        } catch {
-            setError(
-                "Unable to refresh tasks."
-            );
-        }
+      } catch {
+        if (!cancelled)
+          setError("Unable to load this project. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-
-    async function loadMembers() {
-        try {
-            const response =
-                await api.get(
-                    `/projects/${id}/members`
-                );
-
-            setMembers(
-                response.data.members
-            );
-
-            await loadTasks();
-        } catch {
-            setError(
-                "Unable to refresh members."
-            );
-        }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+  async function loadTasks() {
+    try {
+      const r = await api.get(`/projects/${id}/tasks`);
+      setTasks(r.data.tasks);
+      setError("");
+    } catch {
+      setError(
+        "Unable to refresh tasks. Your last loaded board is still shown.",
+      );
+      throw new Error("Refresh failed");
     }
-
-    function clearFilters() {
-        setSearchQuery("");
-        setStatusFilter("ALL");
-        setPriorityFilter("ALL");
-        setAssigneeFilter("ALL");
+  }
+  async function loadMembers() {
+    try {
+      const r = await api.get(`/projects/${id}/members`);
+      setMembers(r.data.members);
+      await loadTasks();
+    } catch {
+      setError("Unable to refresh project members. Please reload.");
+      throw new Error("Refresh failed");
     }
-
-    if (loading) {
-        return (
-            <main className="project-page">
-                <p>
-                    Loading project...
-                </p>
-            </main>
-        );
-    }
-
-    if (
-        error ||
-        !project
-    ) {
-        return (
-            <main className="project-page">
-                <p className="error">
-                    {error ||
-                        "Project not found."}
-                </p>
-
-                <button
-                    onClick={() =>
-                        navigate(
-                            "/dashboard"
-                        )
-                    }
-                >
-                    Back to Dashboard
-                </button>
-            </main>
-        );
-    }
-
-    const normalizedSearch =
-        searchQuery
-            .trim()
-            .toLowerCase();
-
-    const filteredTasks =
-        tasks.filter((task) => {
-            const matchesSearch =
-                normalizedSearch === "" ||
-                task.title
-                    .toLowerCase()
-                    .includes(
-                        normalizedSearch
-                    ) ||
-                task.description
-                    .toLowerCase()
-                    .includes(
-                        normalizedSearch
-                    );
-
-            const matchesStatus =
-                statusFilter === "ALL" ||
-                task.status ===
-                statusFilter;
-
-            const matchesPriority =
-                priorityFilter ===
-                "ALL" ||
-                task.priority ===
-                priorityFilter;
-
-            let matchesAssignee =
-                true;
-
-            if (
-                assigneeFilter ===
-                "UNASSIGNED"
-            ) {
-                matchesAssignee =
-                    task.assigned_to ===
-                    null;
-            } else if (
-                assigneeFilter !==
-                "ALL"
-            ) {
-                matchesAssignee =
-                    task.assigned_to ===
-                    Number(
-                        assigneeFilter
-                    );
-            }
-
-            return (
-                matchesSearch &&
-                matchesStatus &&
-                matchesPriority &&
-                matchesAssignee
-            );
-        });
-
-    const todoTasks =
-        filteredTasks.filter(
-            (task) =>
-                task.status ===
-                "TODO"
-        );
-
-    const progressTasks =
-        filteredTasks.filter(
-            (task) =>
-                task.status ===
-                "IN_PROGRESS"
-        );
-
-    const doneTasks =
-        filteredTasks.filter(
-            (task) =>
-                task.status ===
-                "DONE"
-        );
-
-    const filtersActive =
-        searchQuery !== "" ||
-        statusFilter !== "ALL" ||
-        priorityFilter !== "ALL" ||
-        assigneeFilter !== "ALL";
-
-    function renderTask(
-        task: Task
-    ) {
-        return (
-            <article
-                key={task.id}
-                className="task-card"
-                onClick={() =>
-                    setSelectedTask(task)
-                }
-                style={{
-                    cursor: "pointer",
-                }}
-            >
-                <div className="task-card-header">
-                    <h4>
-                        {task.title}
-                    </h4>
-
-                    <span
-                        className={`priority priority-${task.priority.toLowerCase()}`}
-                    >
-                        {task.priority}
-                    </span>
-                </div>
-
-                {task.description && (
-                    <p>
-                        {
-                            task.description
-                        }
-                    </p>
-                )}
-
-                {task.assignee_name ? (
-                    <small>
-                        Assigned to{" "}
-                        <strong>
-                            {
-                                task.assignee_name
-                            }
-                        </strong>
-                    </small>
-                ) : (
-                    <small>
-                        Unassigned
-                    </small>
-                )}
-
-                {task.due_date && (
-                    <small>
-                        Due{" "}
-                        {new Date(
-                            task.due_date
-                        ).toLocaleDateString()}
-                    </small>
-                )}
-            </article>
-        );
-    }
-
-    return (
-        <main className="project-page">
-            <div className="project-navigation">
-                <Link to="/dashboard">
-                    ← Dashboard
-                </Link>
+  }
+  const filtered = tasks.filter(
+    (t) =>
+      `${t.title} ${t.description}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()) &&
+      (status === "ALL" || t.status === status) &&
+      (priority === "ALL" || t.priority === priority) &&
+      (assignee === "ALL" ||
+        (assignee === "UNASSIGNED"
+          ? t.assigned_to === null
+          : t.assigned_to === Number(assignee))),
+  );
+  const done = tasks.filter((t) => t.status === "DONE").length;
+  const active =
+    search || status !== "ALL" || priority !== "ALL" || assignee !== "ALL";
+  return (
+    <AppShell board>
+      <Link className="back-link" to="/dashboard">
+        ← All projects
+      </Link>
+      {loading ? (
+        <div className="empty-state" role="status">
+          Loading your project…
+        </div>
+      ) : !project ? (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      ) : (
+        <>
+          <header className="project-header">
+            <div>
+              <div className="project-title-row">
+                <span className="project-symbol">
+                  <Icon name="board" />
+                </span>
+                <span className="role-badge">{project.role.toLowerCase()}</span>
+              </div>
+              <h1>{project.name}</h1>
+              <p>
+                {project.description || "Give every task a clear next step."}
+              </p>
+              <div className="board-meta">
+                <span>
+                  <Icon name="users" />
+                  {members.length} {members.length === 1 ? "member" : "members"}
+                </span>
+                <span>
+                  <Icon name="check" />
+                  {done} of {tasks.length} complete
+                </span>
+              </div>
             </div>
-
-            <header className="project-header">
-                <div>
-                    <div className="project-title-row">
-                        <h1>
-                            {project.name}
-                        </h1>
-
-                        <span className="role-badge">
-                            {
-                                project.role
-                            }
-                        </span>
-                    </div>
-
-                    <p>
-                        {
-                            project.description
-                        }
-                    </p>
-
-                    <p className="member-count">
-                        {members.length}{" "}
-                        {members.length === 1
-                            ? "member"
-                            : "members"}
-                    </p>
-                </div>
-
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "10px",
-                        flexWrap: "wrap",
-                    }}
-                >
-                    <button
-                        onClick={() =>
-                            setShowMembers(
-                                true
-                            )
-                        }
-                    >
-                        Manage Members
-                    </button>
-
-                    <button
-                        onClick={() =>
-                            setShowCreateTask(
-                                true
-                            )
-                        }
-                    >
-                        + New Task
-                    </button>
-                </div>
-            </header>
-
-            <section
-                style={{
-                    background: "white",
-                    border:
-                        "1px solid #e5e7eb",
-                    borderRadius: "12px",
-                    padding: "18px",
-                    marginBottom: "24px",
+            <div className="header-actions">
+              <button
+                className="secondary-button"
+                onClick={() => setShowMembers(true)}
+              >
+                <Icon name="users" />
+                Members
+              </button>
+              <button
+                onClick={() => {
+                  setCreateStatus("TODO");
+                  setShowCreate(true);
                 }}
-            >
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                            "minmax(220px, 2fr) repeat(3, minmax(150px, 1fr)) auto",
-                        gap: "12px",
-                        alignItems: "end",
-                    }}
+              >
+                <Icon name="plus" />
+                New task
+              </button>
+            </div>
+          </header>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <section className="board-toolbar" aria-label="Filter tasks">
+            <div className="filter-grid">
+              <label>
+                Search tasks
+                <input
+                  type="search"
+                  placeholder="Find a task…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+              <label>
+                Status
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
                 >
-                    <label
-                        style={{
-                            display: "flex",
-                            flexDirection:
-                                "column",
-                            gap: "6px",
-                            fontWeight: 600,
-                        }}
-                    >
-                        Search tasks
-
-                        <input
-                            type="search"
-                            placeholder="Search title or description..."
-                            value={
-                                searchQuery
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setSearchQuery(
-                                    event.target
-                                        .value
-                                )
-                            }
-                            style={{
-                                padding:
-                                    "10px 12px",
-                                border:
-                                    "1px solid #d1d5db",
-                                borderRadius:
-                                    "8px",
-                            }}
-                        />
-                    </label>
-
-                    <label
-                        style={{
-                            display: "flex",
-                            flexDirection:
-                                "column",
-                            gap: "6px",
-                            fontWeight: 600,
-                        }}
-                    >
-                        Status
-
-                        <select
-                            value={
-                                statusFilter
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setStatusFilter(
-                                    event.target
-                                        .value as StatusFilter
-                                )
-                            }
-                            style={{
-                                padding:
-                                    "10px 12px",
-                                border:
-                                    "1px solid #d1d5db",
-                                borderRadius:
-                                    "8px",
-                                background:
-                                    "white",
-                            }}
-                        >
-                            <option value="ALL">
-                                All
-                            </option>
-
-                            <option value="TODO">
-                                Todo
-                            </option>
-
-                            <option value="IN_PROGRESS">
-                                In Progress
-                            </option>
-
-                            <option value="DONE">
-                                Done
-                            </option>
-                        </select>
-                    </label>
-
-                    <label
-                        style={{
-                            display: "flex",
-                            flexDirection:
-                                "column",
-                            gap: "6px",
-                            fontWeight: 600,
-                        }}
-                    >
-                        Priority
-
-                        <select
-                            value={
-                                priorityFilter
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setPriorityFilter(
-                                    event.target
-                                        .value as PriorityFilter
-                                )
-                            }
-                            style={{
-                                padding:
-                                    "10px 12px",
-                                border:
-                                    "1px solid #d1d5db",
-                                borderRadius:
-                                    "8px",
-                                background:
-                                    "white",
-                            }}
-                        >
-                            <option value="ALL">
-                                All
-                            </option>
-
-                            <option value="LOW">
-                                Low
-                            </option>
-
-                            <option value="MEDIUM">
-                                Medium
-                            </option>
-
-                            <option value="HIGH">
-                                High
-                            </option>
-                        </select>
-                    </label>
-
-                    <label
-                        style={{
-                            display: "flex",
-                            flexDirection:
-                                "column",
-                            gap: "6px",
-                            fontWeight: 600,
-                        }}
-                    >
-                        Assignee
-
-                        <select
-                            value={
-                                assigneeFilter
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setAssigneeFilter(
-                                    event.target
-                                        .value
-                                )
-                            }
-                            style={{
-                                padding:
-                                    "10px 12px",
-                                border:
-                                    "1px solid #d1d5db",
-                                borderRadius:
-                                    "8px",
-                                background:
-                                    "white",
-                            }}
-                        >
-                            <option value="ALL">
-                                All
-                            </option>
-
-                            <option value="UNASSIGNED">
-                                Unassigned
-                            </option>
-
-                            {members.map(
-                                (member) => (
-                                    <option
-                                        key={
-                                            member.id
-                                        }
-                                        value={
-                                            member.id
-                                        }
-                                    >
-                                        {
-                                            member.name
-                                        }
-                                    </option>
-                                )
-                            )}
-                        </select>
-                    </label>
-
+                  <option value="ALL">All statuses</option>
+                  {columns.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Priority
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                >
+                  <option value="ALL">All priorities</option>
+                  {["LOW", "MEDIUM", "HIGH"].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Assignee
+                <select
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                >
+                  <option value="ALL">Everyone</option>
+                  <option value="UNASSIGNED">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="secondary-button"
+                disabled={!active}
+                onClick={() => {
+                  setSearch("");
+                  setStatus("ALL");
+                  setPriority("ALL");
+                  setAssignee("ALL");
+                }}
+              >
+                Clear
+              </button>
+            </div>
+            <p className="filter-summary">
+              Showing {filtered.length} of {tasks.length} tasks{" "}
+              <span>Click a task to edit its details or status.</span>
+            </p>
+          </section>
+          <section className="kanban-board" aria-label="Project task board">
+            {columns.map(([value, label]) => {
+              const list = filtered.filter((t) => t.status === value);
+              return (
+                <div
+                  key={value}
+                  className={`kanban-column column-${value.toLowerCase()}`}
+                >
+                  <div className="column-heading">
+                    <h2>
+                      <i />
+                      {label}
+                      <span>{list.length}</span>
+                    </h2>
                     <button
-                        type="button"
-                        onClick={
-                            clearFilters
-                        }
-                        disabled={
-                            !filtersActive
-                        }
-                        style={{
-                            padding:
-                                "10px 14px",
-                            border: 0,
-                            borderRadius:
-                                "8px",
-                            background:
-                                filtersActive
-                                    ? "#e5e7eb"
-                                    : "#f3f4f6",
-                            color:
-                                filtersActive
-                                    ? "#111827"
-                                    : "#9ca3af",
-                            fontWeight: 600,
-                            cursor:
-                                filtersActive
-                                    ? "pointer"
-                                    : "not-allowed",
-                        }}
+                      className="column-add"
+                      aria-label={`Create task in ${label} column`}
+                      onClick={() => {
+                        setCreateStatus(value);
+                        setShowCreate(true);
+                      }}
                     >
-                        Clear
+                      <Icon name="plus" />
                     </button>
+                  </div>
+                  <div className="task-list">
+                    {list.map((t) => (
+                      <button
+                        key={t.id}
+                        className="task-card"
+                        onClick={() => setSelected(t)}
+                      >
+                        <div className="task-card-header">
+                          <span
+                            className={`priority priority-${t.priority.toLowerCase()}`}
+                          >
+                            {t.priority.toLowerCase()} priority
+                          </span>
+                          <span className="task-id">TF-{t.id}</span>
+                        </div>
+                        <h3>{t.title}</h3>
+                        {t.description && <p>{t.description}</p>}
+                        <div className="task-card-footer">
+                          <span className="task-assignee">
+                            <span className="mini-avatar">
+                              {t.assignee_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .slice(0, 2)
+                                .join("") || "–"}
+                            </span>
+                            {t.assignee_name || "Unassigned"}
+                          </span>
+                          {t.due_date && (
+                            <span className="task-date">
+                              <Icon name="clock" />
+                              {new Date(t.due_date).toLocaleDateString(
+                                "en-US",
+                                { month: "short", day: "numeric" },
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    {!list.length && (
+                      <div className="empty-column">
+                        <Icon name={value === "DONE" ? "check" : "board"} />
+                        <p>
+                          {active
+                            ? "No matching tasks"
+                            : "A little room for progress."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div
-                    style={{
-                        marginTop: "12px",
-                        color: "#6b7280",
-                        fontSize: "14px",
-                    }}
-                >
-                    Showing{" "}
-                    <strong>
-                        {
-                            filteredTasks.length
-                        }
-                    </strong>{" "}
-                    of{" "}
-                    <strong>
-                        {tasks.length}
-                    </strong>{" "}
-                    tasks
-                </div>
-            </section>
-
-            <section className="kanban-board">
-                <div className="kanban-column">
-                    <div className="column-heading">
-                        <h3>
-                            TODO
-                        </h3>
-
-                        <span>
-                            {
-                                todoTasks.length
-                            }
-                        </span>
-                    </div>
-
-                    <div className="task-list">
-                        {todoTasks.map(
-                            renderTask
-                        )}
-
-                        {todoTasks.length ===
-                            0 && (
-                                <p className="empty-column">
-                                    No matching tasks
-                                </p>
-                            )}
-                    </div>
-                </div>
-
-                <div className="kanban-column">
-                    <div className="column-heading">
-                        <h3>
-                            IN PROGRESS
-                        </h3>
-
-                        <span>
-                            {
-                                progressTasks.length
-                            }
-                        </span>
-                    </div>
-
-                    <div className="task-list">
-                        {progressTasks.map(
-                            renderTask
-                        )}
-
-                        {progressTasks.length ===
-                            0 && (
-                                <p className="empty-column">
-                                    No matching tasks
-                                </p>
-                            )}
-                    </div>
-                </div>
-
-                <div className="kanban-column">
-                    <div className="column-heading">
-                        <h3>
-                            DONE
-                        </h3>
-
-                        <span>
-                            {
-                                doneTasks.length
-                            }
-                        </span>
-                    </div>
-
-                    <div className="task-list">
-                        {doneTasks.map(
-                            renderTask
-                        )}
-
-                        {doneTasks.length ===
-                            0 && (
-                                <p className="empty-column">
-                                    No matching tasks
-                                </p>
-                            )}
-                    </div>
-                </div>
-            </section>
-
-            {showCreateTask && (
-                <CreateTaskModal
-                    projectId={
-                        Number(id)
-                    }
-                    members={
-                        members
-                    }
-                    onClose={() =>
-                        setShowCreateTask(
-                            false
-                        )
-                    }
-                    onCreated={
-                        loadTasks
-                    }
-                />
-            )}
-
-            {selectedTask && (
-                <EditTaskModal
-                    task={
-                        selectedTask
-                    }
-                    members={
-                        members
-                    }
-                    onClose={() =>
-                        setSelectedTask(
-                            null
-                        )
-                    }
-                    onUpdated={
-                        loadTasks
-                    }
-                />
-            )}
-
-            {showMembers && (
-                <ManageMembersModal
-                    projectId={
-                        Number(id)
-                    }
-                    projectRole={
-                        project.role
-                    }
-                    members={
-                        members
-                    }
-                    onClose={() =>
-                        setShowMembers(
-                            false
-                        )
-                    }
-                    onMembersChanged={
-                        loadMembers
-                    }
-                />
-            )}
-        </main>
-    );
+              );
+            })}
+          </section>
+          {showCreate && (
+            <CreateTaskModal
+              initialStatus={createStatus}
+              projectId={Number(id)}
+              members={members}
+              onClose={() => setShowCreate(false)}
+              onCreated={loadTasks}
+            />
+          )}{" "}
+          {selected && (
+            <EditTaskModal
+              task={selected}
+              members={members}
+              onClose={() => setSelected(null)}
+              onUpdated={loadTasks}
+            />
+          )}{" "}
+          {showMembers && (
+            <ManageMembersModal
+              projectId={Number(id)}
+              projectRole={project.role}
+              members={members}
+              onClose={() => setShowMembers(false)}
+              onMembersChanged={loadMembers}
+            />
+          )}
+        </>
+      )}
+    </AppShell>
+  );
 }
