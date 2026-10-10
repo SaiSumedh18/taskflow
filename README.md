@@ -80,9 +80,7 @@ To run the Spring service without Docker, roll back to the Node backend, or run 
 
 ## More screenshots
 
-| Sign in | Dashboard |
-|---|---|
-| ![Sign in](docs/screenshots/taskflow-login.png) | ![Dashboard](docs/screenshots/taskflow-dashboard.png) |
+![Sign in](docs/screenshots/taskflow-login.png)
 
 ---
 

@@ -1,4 +1,4 @@
-FROM node:24-alpine AS builder
+FROM public.ecr.aws/docker/library/node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY src ./src
 RUN npm run build
 
 
-FROM node:24-alpine AS production
+FROM public.ecr.aws/docker/library/node:24-alpine AS production
 
 WORKDIR /app
 
